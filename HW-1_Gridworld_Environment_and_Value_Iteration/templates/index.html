@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gridworld Environment and Value evaluation</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .grid-container {
+            display: grid;
+            gap: 10px; /* 增加格子間距 */
+            margin: 30px 0;
+            padding: 10px; /* 添加內邊距 */
+            background-color: #f0f0f0; /* 可選：添加背景色以突顯格子間隔 */
+            display: inline-grid; /* 使容器大小符合內容 */
+        }
+        .cell {
+            width: 80px;
+            height: 80px;
+            border: 2px solid black;
+            text-align: center;
+            font-size: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            background-color: white; /* 確保格子背景為白色 */
+            margin: 0; /* 重置外邊距 */
+            box-sizing: border-box; /* 確保邊框不會影響整體大小 */
+        }
+        .start { background-color: green; color: white; }
+        .end { background-color: red; color: white; }
+        .obstacle { background-color: gray; }
+        .policy {
+            font-size: 40px; /* 增加箭頭大小 */
+            margin-bottom: 6px;
+        }
+        .value {
+            font-size: 20px; /* 增加數值字體大小 */
+        }
+        
+        /* 按鈕樣式 */
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 18px 30px; /* 增加按鈕內邊距 */
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 24px; /* 增加按鈕文字大小 */
+            margin-right: 25px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        /* 輸入框樣式 */
+        input[type="number"] {
+            padding: 14px;
+            width: 100px; /* 增加輸入框寬度 */
+            margin-right: 20px;
+            font-size: 24px; /* 增加輸入框文字大小 */
+        }
+        
+        /* 控制區域樣式 */
+        .controls {
+            margin-bottom: 40px;
+            font-size: 20px; /* 增加標籤文字大小 */
+        }
+        
+        /* 狀態訊息樣式 */
+        #status {
+            font-size: 30px; /* 增加狀態訊息文字大小 */
+            color: #d9534f;
+            margin-top: 25px;
+            height: 35px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Gridworld Environment and Value evaluation</h2>
+    
+    <div class="controls">
+        <label for="size">選擇地圖大小 (3-9): </label>
+        <input type="number" id="size" min="3" max="9" value="{{ n }}">
+        <button onclick="setGridSize()">更新大小</button>
+    </div>
+
+    <div id="grid" class="grid-container"></div>
+    
+    <div class="controls">
+        <button onclick="evaluatePolicy()">執行計算</button>
+        <button onclick="resetValues()">重置數值</button>
+    </div>
+    
+    <div id="status"></div>
+
+    <script>
+        let n = {{ n }};
+        let start = null;
+        let end = null;
+        let obstacles = new Set();
+        let policy = {{ policy|tojson }};
+        let values = {{ value_function|tojson }};
+
+        function generateGrid() {
+            $("#grid").empty().css({
+                "grid-template-columns": `repeat(${n}, 80px)`,
+                "gap": "10px" // 確保間距一致
+            });
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < n; j++) {
+                    let cell = $("<div>").addClass("cell").attr("data-x", i).attr("data-y", j);
+                    
+                    // 添加政策箭頭
+                    let policyDiv = $("<div>").addClass("policy").text(policy[i][j]);
+                    cell.append(policyDiv);
+                    
+                    // 添加價值函數
+                    let valueDiv = $("<div>").addClass("value").text(values[i][j].toFixed(2));
+                    cell.append(valueDiv);
+                    
+                    cell.click(() => updateCell(i, j)); // 點擊格子觸發事件
+                    $("#grid").append(cell);
+                }
+            }
+            
+            // 重新標記起點、終點和障礙物
+            if (start) {
+                $(`.cell[data-x=${start[0]}][data-y=${start[1]}]`).addClass("start");
+            }
+            if (end) {
+                $(`.cell[data-x=${end[0]}][data-y=${end[1]}]`).addClass("end");
+            }
+            obstacles.forEach(obs => {
+                const [x, y] = obs.split(',').map(Number);
+                $(`.cell[data-x=${x}][data-y=${y}]`).addClass("obstacle");
+            });
+        }
+
+        function setGridSize() {
+            let size = $("#size").val();
+            $.ajax({
+                url: "/set_size",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({ size: parseInt(size) }),
+                success: function(data) {
+                    n = data.n;
+                    policy = data.policy;
+                    values = data.values;
+                    resetObstaclesStartEnd();
+                    generateGrid();
+                }
+            });
+        }
+
+        function resetObstaclesStartEnd() {
+            obstacles = new Set();
+            start = null;
+            end = null;
+        }
+
+        function updateCell(x, y) {
+            // 檢查是否點擊的是起點
+            if (start && start[0] === x && start[1] === y) {
+                $(".start").removeClass("start");
+                start = null;
+                return;
+            }
+            // 檢查是否點擊的是終點
+            if (end && end[0] === x && end[1] === y) {
+                $(".end").removeClass("end");
+                end = null;
+                return;
+            }
+            // 檢查是否點擊的是障礙物
+            if (obstacles.has(`${x},${y}`)) {
+                // 立即移除樣式，然後發送請求
+                let cell = $(`.cell[data-x=${x}][data-y=${y}]`);
+                cell.removeClass("obstacle");
+                obstacles.delete(`${x},${y}`);
+                
+                $.ajax({
+                    url: "/update_cell",
+                    type: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify({ x, y, type: "obstacle" }),
+                    error: function() {
+                        // 如果請求失敗，恢復障礙物
+                        cell.addClass("obstacle");
+                        obstacles.add(`${x},${y}`);
+                    }
+                });
+                return;
+            }
+
+            // 設置新的起點
+            if (!start) {
+                // 立即添加樣式，然後發送請求
+                let cell = $(`.cell[data-x=${x}][data-y=${y}]`);
+                cell.addClass("start");
+                start = [x, y];
+                
+                $.ajax({
+                    url: "/update_cell",
+                    type: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify({ x, y, type: "start" }),
+                    error: function() {
+                        // 如果請求失敗，恢復狀態
+                        cell.removeClass("start");
+                        start = null;
+                    }
+                });
+                return;
+            }
+
+            // 設置終點
+            if (!end) {
+                // 立即添加樣式，然後發送請求
+                let cell = $(`.cell[data-x=${x}][data-y=${y}]`);
+                cell.addClass("end");
+                end = [x, y];
+                
+                $.ajax({
+                    url: "/update_cell",
+                    type: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify({ x, y, type: "end" }),
+                    error: function() {
+                        // 如果請求失敗，恢復狀態
+                        cell.removeClass("end");
+                        end = null;
+                    }
+                });
+                return;
+            }
+
+            // 設置障礙物（如果還沒達到上限）
+            if (obstacles.size < n - 2) {
+                // 立即添加樣式，然後發送請求
+                let cell = $(`.cell[data-x=${x}][data-y=${y}]`);
+                cell.addClass("obstacle");
+                obstacles.add(`${x},${y}`);
+                
+                $.ajax({
+                    url: "/update_cell",
+                    type: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify({ x, y, type: "obstacle" }),
+                    error: function() {
+                        // 如果請求失敗，恢復狀態
+                        cell.removeClass("obstacle");
+                        obstacles.delete(`${x},${y}`);
+                    }
+                });
+            } else {
+                $("#status").text(`已達到障礙物數量上限 (${n-2} 個)`);
+                setTimeout(() => $("#status").text(""), 3000);
+            }
+
+            // 在點擊障礙物按鈕後添加這段代碼
+            console.log("障礙物設置:", x, y);
+            console.log("障礙物當前數量:", obstacles.size);
+            console.log("cell元素:", $(`.cell[data-x=${x}][data-y=${y}]`));
+        }
+
+        function evaluatePolicy() {
+            $("#status").text("計算中...");
+            $.ajax({
+                url: "/evaluate_policy",
+                type: "POST",
+                contentType: "application/json",
+                success: function(data) {
+                    values = data.values;
+                    for (let i = 0; i < n; i++) {
+                        for (let j = 0; j < n; j++) {
+                            $(`.cell[data-x=${i}][data-y=${j}] .value`).text(values[i][j].toFixed(2));
+                        }
+                    }
+                    $("#status").text("計算完成");
+                }
+            });
+        }
+        
+        function resetValues() {
+            $.ajax({
+                url: "/reset_values",
+                type: "POST",
+                contentType: "application/json",
+                success: function(data) {
+                    values = data.values;
+                    for (let i = 0; i < n; i++) {
+                        for (let j = 0; j < n; j++) {
+                            $(`.cell[data-x=${i}][data-y=${j}] .value`).text(values[i][j].toFixed(2));
+                        }
+                    }
+                    $("#status").text("數值已重置");
+                }
+            });
+        }
+
+        $(document).ready(() => generateGrid());
+    </script>
+
+</body>
+</html>
