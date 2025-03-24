@@ -39,6 +39,152 @@
 
 ---
 ### 2.Code
+
+#### 📁 `app.py` 解說（Flask 後端）
+
+##### 🔹 初始化區塊
+
+```python
+n = 5
+grid = [["" for _ in range(n)] for _ in range(n)]
+start = None
+end = None
+obstacles = set()
+actions = ["↑", "↓", "←", "→"]
+policy = [[random.choice(actions) for _ in range(n)] for _ in range(n)]
+value_function = np.zeros((n, n))
+```
+
+- 建立 `n x n` 地圖、隨機策略與初始化狀態價值 \( V(s) \)
+- `start`, `end`, `obstacles` 記錄互動狀態
+
+---
+
+##### 🔹 策略評估函數 `evaluate_policy`
+
+```python
+def evaluate_policy():
+    ...
+```
+
+- 使用貝爾曼方程式，根據目前策略 `policy` 計算 `value_function`
+- 使用折扣因子 γ = 0.9，並重複更新直到收斂
+
+---
+
+##### 🔹 Flask 路由說明
+
+| 路由 | 功能 |
+|------|------|
+| `/` | 主頁，渲染地圖畫面 |
+| `/set_size` | 接收地圖大小，重設地圖與策略 |
+| `/update_cell` | 更新格子狀態（起點、終點、障礙） |
+| `/evaluate_policy` | 執行策略評估 |
+| `/reset_values` | 重置所有 `V(s)` 值為 0 |
+
+---
+
+#### 🖥️ `index.html` 解說（前端畫面）
+
+##### 🔹 HTML 功能概覽
+
+```html
+<input type="number" id="size" min="3" max="9">
+<button onclick="setGridSize()">更新大小</button>
+```
+
+- 用來調整地圖大小（3~9）
+
+```html
+<div id="grid" class="grid-container"></div>
+```
+
+- 地圖格子容器，格子由 JS 動態產生
+
+```html
+<button onclick="evaluatePolicy()">執行計算</button>
+<button onclick="resetValues()">重置數值</button>
+```
+
+- 控制策略評估與重置值函數
+
+---
+
+##### 🎨 CSS 樣式亮點
+
+- `.cell` 是每個格子，大小為 100x100px，內含：
+  - `.policy`：顯示箭頭（策略）
+  - `.value`：顯示該狀態的 V(s)
+- `.start`, `.end`, `.obstacle` 用不同背景色標記
+
+---
+
+##### 🔸 JavaScript 核心功能
+
+##### `generateGrid()`
+
+- 建立地圖格子，將 `policy` 與 `V(s)` 寫入每格
+- 套用起點、終點與障礙物的樣式
+- 綁定每格的點擊事件 → `updateCell(x, y)`
+
+---
+
+##### `setGridSize()`
+
+```js
+function setGridSize() {
+    ...
+}
+```
+
+- 發送 POST 請求給 `/set_size`
+- 從後端接收新的地圖大小與資料，重新繪製
+
+---
+
+##### `updateCell(x, y)`
+
+- 點擊格子依序設為：
+  1. 起點（start）
+  2. 終點（end）
+  3. 障礙物（obstacle）
+- 若重複點擊會移除對應設定（toggle）
+- 會即時更新樣式 + 非同步請求後端 `/update_cell`
+
+---
+
+##### `evaluatePolicy()`
+
+```js
+function evaluatePolicy() {
+    ...
+}
+```
+
+- 呼叫 `/evaluate_policy`，從後端取得新的 `V(s)`
+- 即時更新畫面上每個格子的數值
+
+---
+
+##### `resetValues()`
+
+- 呼叫 `/reset_values`
+- 將所有格子的 V(s) 顯示重設為 0
+
+---
+
+##### ✅ 小結功能表
+
+| 功能 | 說明 |
+|------|------|
+| 地圖動態產生 | JS `generateGrid()` 根據策略與值產生畫面 |
+| 點擊設定角色 | `updateCell()` 控制起點、終點與障礙物 |
+| 策略評估 | `/evaluate_policy` 後端運算 V(s) |
+| 重設值函數 | `/reset_values` 將 V(s) 清空 |
+| 使用者體驗 | 即時樣式更新、狀態提示文字、錯誤處理 |
+
+<br>
+
 ##### app.py
 ```python
 from flask import Flask, render_template, request, jsonify
@@ -459,154 +605,6 @@ if __name__ == "__main__":
 
 ```
 
-
----
-
-#### 📁 `app.py` 解說（Flask 後端）
-
-##### 🔹 初始化區塊
-
-```python
-n = 5
-grid = [["" for _ in range(n)] for _ in range(n)]
-start = None
-end = None
-obstacles = set()
-actions = ["↑", "↓", "←", "→"]
-policy = [[random.choice(actions) for _ in range(n)] for _ in range(n)]
-value_function = np.zeros((n, n))
-```
-
-- 建立 `n x n` 地圖、隨機策略與初始化狀態價值 \( V(s) \)
-- `start`, `end`, `obstacles` 記錄互動狀態
-
----
-
-##### 🔹 策略評估函數 `evaluate_policy`
-
-```python
-def evaluate_policy():
-    ...
-```
-
-- 使用貝爾曼方程式，根據目前策略 `policy` 計算 `value_function`
-- 使用折扣因子 γ = 0.9，並重複更新直到收斂
-
----
-
-##### 🔹 Flask 路由說明
-
-| 路由 | 功能 |
-|------|------|
-| `/` | 主頁，渲染地圖畫面 |
-| `/set_size` | 接收地圖大小，重設地圖與策略 |
-| `/update_cell` | 更新格子狀態（起點、終點、障礙） |
-| `/evaluate_policy` | 執行策略評估 |
-| `/reset_values` | 重置所有 `V(s)` 值為 0 |
-
----
-
-#### 🖥️ `index.html` 解說（前端畫面）
-
-##### 🔹 HTML 功能概覽
-
-```html
-<input type="number" id="size" min="3" max="9">
-<button onclick="setGridSize()">更新大小</button>
-```
-
-- 用來調整地圖大小（3~9）
-
-```html
-<div id="grid" class="grid-container"></div>
-```
-
-- 地圖格子容器，格子由 JS 動態產生
-
-```html
-<button onclick="evaluatePolicy()">執行計算</button>
-<button onclick="resetValues()">重置數值</button>
-```
-
-- 控制策略評估與重置值函數
-
----
-
-##### 🎨 CSS 樣式亮點
-
-- `.cell` 是每個格子，大小為 100x100px，內含：
-  - `.policy`：顯示箭頭（策略）
-  - `.value`：顯示該狀態的 V(s)
-- `.start`, `.end`, `.obstacle` 用不同背景色標記
-
----
-
-##### 🔸 JavaScript 核心功能
-
-##### `generateGrid()`
-
-- 建立地圖格子，將 `policy` 與 `V(s)` 寫入每格
-- 套用起點、終點與障礙物的樣式
-- 綁定每格的點擊事件 → `updateCell(x, y)`
-
----
-
-##### `setGridSize()`
-
-```js
-function setGridSize() {
-    ...
-}
-```
-
-- 發送 POST 請求給 `/set_size`
-- 從後端接收新的地圖大小與資料，重新繪製
-
----
-
-##### `updateCell(x, y)`
-
-- 點擊格子依序設為：
-  1. 起點（start）
-  2. 終點（end）
-  3. 障礙物（obstacle）
-- 若重複點擊會移除對應設定（toggle）
-- 會即時更新樣式 + 非同步請求後端 `/update_cell`
-
----
-
-##### `evaluatePolicy()`
-
-```js
-function evaluatePolicy() {
-    ...
-}
-```
-
-- 呼叫 `/evaluate_policy`，從後端取得新的 `V(s)`
-- 即時更新畫面上每個格子的數值
-
----
-
-##### `resetValues()`
-
-- 呼叫 `/reset_values`
-- 將所有格子的 V(s) 顯示重設為 0
-
----
-
-##### ✅ 小結功能表
-
-| 功能 | 說明 |
-|------|------|
-| 地圖動態產生 | JS `generateGrid()` 根據策略與值產生畫面 |
-| 點擊設定角色 | `updateCell()` 控制起點、終點與障礙物 |
-| 策略評估 | `/evaluate_policy` 後端運算 V(s) |
-| 重設值函數 | `/reset_values` 將 V(s) 清空 |
-| 使用者體驗 | 即時樣式更新、狀態提示文字、錯誤處理 |
-
----
-
 ### 3.Prompt 規劃概念（分階段引導生成）
 #### ✅ Step 1 — 初始化 Flask 與 GridWorld 狀態
 
@@ -707,8 +705,7 @@ $$
 Value Iteration 是強化學習中的經典演算法，適合用來學習強化學習的核心概念，並可作為後續更複雜方法的基礎。
 
 
-### 5.Prompt 規劃概念（分階段引導生成）
-Demo 流程 — 執行 Flask GridWorld 的步驟
+### 5.Demo 流程 — 執行 Flask GridWorld 的步驟
 
 ---
 
@@ -795,6 +792,8 @@ http://127.0.0.1:5000/
 | 重置數值 | 點「重置數值」恢復原始狀態 |
 
 ---
+
+### 6. 結果呈顯
 
 <div style="display: flex; gap: 20px; justify-content: center; align-items: center;">
 

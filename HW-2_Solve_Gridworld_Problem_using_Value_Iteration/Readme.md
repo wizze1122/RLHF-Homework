@@ -51,6 +51,129 @@
 
 ### 2.Code
 
+#### 📁 `app.py`（後端 Flask 程式）
+
+<br>
+
+##### 🔹 基本設定與初始化
+
+```python
+from flask import Flask, render_template, request, jsonify
+import random
+import numpy as np
+
+app = Flask(__name__)
+```
+➡ 引入 Flask、Numpy 等必要套件，供後端運算與 API 用。
+
+```python
+n = 5
+grid = [["" for _ in range(n)] for _ in range(n)]
+start = None
+end = None
+obstacles = set()
+actions = ["↑", "↓", "←", "→"]
+policy = [[random.choice(actions) for _ in range(n)] for _ in range(n)]
+value_function = np.zeros((n, n))
+```
+➡ 初始值設定：地圖大小、策略、障礙物與狀態價值初始化。
+
+---
+
+##### 🔹 `evaluate_policy()`
+
+```python
+def evaluate_policy():
+    ...
+```
+➡ 根據目前策略計算每格 V(s)，直到收斂（政策不改變，只改 V(s)）。
+
+<br>
+
+##### 🔹 `value_iteration()`
+
+```python
+def value_iteration():
+    ...
+```
+➡ 根據每格上下左右四方向的最大期望報酬，更新 V(s) 並找出最佳策略。
+
+<br>
+
+##### 🔹 `find_optimal_path()`
+
+```python
+def find_optimal_path():
+    ...
+```
+➡ 根據當前策略模擬從起點走到終點的路徑。若碰到障礙或循環則中止。
+
+<br>
+
+##### 🔹 Flask 路由設計
+
+- `/`: 渲染主頁 index.html。
+- `/set_size`: 設定地圖大小。
+- `/update_cell`: 更新單元格狀態（起點/終點/障礙物）。
+- `/evaluate_policy`: 執行政策評估。
+- `/value_iteration`: 執行價值迭代並取得最佳策略與路徑。
+- `/reset_values`: 重設所有狀態價值。
+
+<br>
+
+#### 📄 `index.html`（前端互動頁面）
+
+##### 🔹 標頭與樣式
+
+- 匯入 jQuery
+- 設定網格樣式、按鈕樣式、動畫樣式
+
+<br>
+
+##### 🔹 主畫面功能區塊
+
+- 地圖大小設定與按鈕操作
+- 地圖格子會動態產生在 `#grid` 容器中
+- 執行 / 動畫顯示 / 重置 按鈕
+
+<br>
+
+##### 🔹 JavaScript 程式功能
+
+```js
+generateGrid()
+```
+➡ 根據後端資料建立地圖格子並填入箭頭與 V(s)
+<br>
+```js
+updateCell(x, y)
+```
+➡ 點擊格子設定起點、終點或障礙物並呼叫後端 API 更新狀態
+<br>
+```js
+executeAlgorithm()
+```
+➡ 呼叫 /value_iteration，取得最新策略與值函數並更新畫面
+<br>
+```js
+animatePath()
+```
+➡ 顯示最佳路徑動畫（逐格高亮）
+<br>
+```js
+resetValues()
+```
+➡ 重置所有格子數值並清除路徑顯示
+
+<br>
+
+#### ✅ 總結
+
+本專案由 Flask + HTML + JS 組成：
+
+- 後端 app.py 負責 RL 演算法與 API 回應
+- 前端 index.html 提供互動式操作與視覺化展示
+
 #### app.py
 ```python=
 from flask import Flask, render_template, request, jsonify
@@ -830,139 +953,10 @@ if __name__ == "__main__":
 
 </body>
 </html>
-
 ```
-
-<br>
-
-#### 📁 `app.py`（後端 Flask 程式）
-
-<br>
-
-##### 🔹 基本設定與初始化
-
-```python
-from flask import Flask, render_template, request, jsonify
-import random
-import numpy as np
-
-app = Flask(__name__)
-```
-➡ 引入 Flask、Numpy 等必要套件，供後端運算與 API 用。
-
-```python
-n = 5
-grid = [["" for _ in range(n)] for _ in range(n)]
-start = None
-end = None
-obstacles = set()
-actions = ["↑", "↓", "←", "→"]
-policy = [[random.choice(actions) for _ in range(n)] for _ in range(n)]
-value_function = np.zeros((n, n))
-```
-➡ 初始值設定：地圖大小、策略、障礙物與狀態價值初始化。
-
----
-
-##### 🔹 `evaluate_policy()`
-
-```python
-def evaluate_policy():
-    ...
-```
-➡ 根據目前策略計算每格 V(s)，直到收斂（政策不改變，只改 V(s)）。
-
-<br>
-
-##### 🔹 `value_iteration()`
-
-```python
-def value_iteration():
-    ...
-```
-➡ 根據每格上下左右四方向的最大期望報酬，更新 V(s) 並找出最佳策略。
-
-<br>
-
-##### 🔹 `find_optimal_path()`
-
-```python
-def find_optimal_path():
-    ...
-```
-➡ 根據當前策略模擬從起點走到終點的路徑。若碰到障礙或循環則中止。
-
-<br>
-
-##### 🔹 Flask 路由設計
-
-- `/`: 渲染主頁 index.html。
-- `/set_size`: 設定地圖大小。
-- `/update_cell`: 更新單元格狀態（起點/終點/障礙物）。
-- `/evaluate_policy`: 執行政策評估。
-- `/value_iteration`: 執行價值迭代並取得最佳策略與路徑。
-- `/reset_values`: 重設所有狀態價值。
-
-<br>
-
-#### 📄 `index.html`（前端互動頁面）
-
-<br>
-
-##### 🔹 標頭與樣式
-
-- 匯入 jQuery
-- 設定網格樣式、按鈕樣式、動畫樣式
-
-<br>
-
-##### 🔹 主畫面功能區塊
-
-- 地圖大小設定與按鈕操作
-- 地圖格子會動態產生在 `#grid` 容器中
-- 執行 / 動畫顯示 / 重置 按鈕
-
-<br>
-
-##### 🔹 JavaScript 程式功能
-
-```js
-generateGrid()
-```
-➡ 根據後端資料建立地圖格子並填入箭頭與 V(s)
-<br>
-```js
-updateCell(x, y)
-```
-➡ 點擊格子設定起點、終點或障礙物並呼叫後端 API 更新狀態
-<br>
-```js
-executeAlgorithm()
-```
-➡ 呼叫 /value_iteration，取得最新策略與值函數並更新畫面
-<br>
-```js
-animatePath()
-```
-➡ 顯示最佳路徑動畫（逐格高亮）
-<br>
-```js
-resetValues()
-```
-➡ 重置所有格子數值並清除路徑顯示
-
-<br>
-
-#### ✅ 總結
-
-本專案由 Flask + HTML + JS 組成：
-
-- 後端 app.py 負責 RL 演算法與 API 回應
-- 前端 index.html 提供互動式操作與視覺化展示
 
 ### 3.Prompt 規劃概念
 
-<br>
 
 #### 🧩 Step 1: Backend Setup - Flask App Initialization
 
@@ -971,8 +965,6 @@ resetValues()
 > 使用 Python 建立一個 Flask 應用，初始化地圖為 n x n 網格（預設為 5x5），使用 NumPy 初始化一個零矩陣代表狀態價值 `value_function`。每個格子隨機給定一個箭頭作為初始政策（↑↓←→）。
 
 ✅ 輸出應包含：`app = Flask(__name__)`、`grid`, `policy`, `value_function` 等變數初始化。
-
-<br>
 
 #### 🧩 Step 2: Define Value Iteration and Policy Evaluation
 
@@ -983,8 +975,6 @@ resetValues()
 > - `evaluate_policy()`：根據目前的政策 `policy` 計算每個狀態的 V(s)，但不更新政策。
 
 使用 NumPy 操作，處理障礙格（懲罰 -100）、終點（V=0）等情況。
-
-<br>
 
 #### 🧩 Step 3: Find Optimal Path
 
@@ -1006,8 +996,6 @@ resetValues()
 - `/value_iteration`：執行價值迭代並回傳結果與路徑
 - `/reset_values`：將 V(s) 清空歸零
 
-<br>
-
 #### 🧩 Step 5: Build the Frontend Layout (HTML)
 
 **Prompt:**
@@ -1023,8 +1011,6 @@ resetValues()
 
 請使用 jQuery 建立前端互動，與 Flask 後端 API 串接。
 
-<br>
-
 #### 🧩 Step 6: Add Execution Buttons and Grid Rendering
 
 **Prompt:**
@@ -1035,8 +1021,6 @@ resetValues()
 - 「重置數值」：清空所有狀態價值
 
 使用 AJAX 呼叫 Flask，更新畫面內容。
-
-<br>
 
 #### 🧩 Step 7: 完整整合與測試
 
@@ -1059,8 +1043,6 @@ resetValues()
 Policy Iteration 是強化學習中一種用來求解最適策略（Optimal Policy）的方法。  
 它是一種基於 **策略改進（Policy Improvement）** 與 **策略評估（Policy Evaluation）** 的疊代演算法，常用於有限狀態 MDP（馬可夫決策過程）中。
 
-<br>
-
 #### 🔁 演算法流程
 
 Policy Iteration 包含以下兩個主要步驟，重複執行直到策略收斂：
@@ -1076,21 +1058,15 @@ Policy Iteration 包含以下兩個主要步驟，重複執行直到策略收斂
 V(s) = R(s) + γ * Σ P(s'|s, π(s)) * V(s')
 ```
 
-<br>
-
 ##### 2. 🔁 **Policy Improvement（策略改進）**
 
 - 根據已計算出的 V(s)，針對每個狀態找出使期望報酬最大的行動 a。
 - 更新 π(s) 為新的最佳行動。
 - 若策略不再改變，則收斂，停止迴圈。
 
-<br>
-
 #### ✅ 終止條件
 
 當整個策略 π(s) 經過一次改進後 **不再變化**，代表已經收斂到最適策略，演算法結束。
-
-<br>
 
 #### 🧠 與 Value Iteration 比較
 
@@ -1100,8 +1076,6 @@ V(s) = R(s) + γ * Σ P(s'|s, π(s)) * V(s')
 | 評估方式         | 完整計算 V(s) 直到收斂         | 只做一次 Bellman 更新           |
 | 收斂速度         | 一般步數少但每步花時間較多     | 每步快但總步數可能較多           |
 | 可讀性           | 清楚拆成兩部分，容易理解       | 實作簡潔，適合大型空間           |
-
-<br>
 
 #### 📝 總結
 
@@ -1120,7 +1094,6 @@ python app.py
 
 系統會在 `http://127.0.0.1:5000` 啟動本地伺服器。
 
-<br>
 
 #### 🌐 2. 開啟網頁介面
 
@@ -1193,6 +1166,8 @@ http://localhost:5000
     <p>執行後結果</p>
 </div>
 
+<br>
+<br>
 你可以在以下連結觀看本系統的操作影片：
 
-[▶️ 點我觀看 YouTube 影片](https://youtu.be/yaS2mcCdfeM?si=WvgyLGDL3-QOs-HK)
+[▶️ 點我觀看 YouTube 影片]([https://youtu.be/yaS2mcCdfeM?si=WvgyLGDL3-QOs-HK])
