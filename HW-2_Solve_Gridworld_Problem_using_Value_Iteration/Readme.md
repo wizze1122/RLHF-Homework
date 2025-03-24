@@ -1170,4 +1170,4 @@ http://localhost:5000
 <br>
 你可以在以下連結觀看本系統的操作影片：
 
-[▶️ 點我觀看 YouTube 影片]([https://youtu.be/yaS2mcCdfeM?si=WvgyLGDL3-QOs-HK])
+[▶️ 點我觀看 YouTube 影片](https://youtu.be/yaS2mcCdfeM?si=WvgyLGDL3-QOs-HK)
